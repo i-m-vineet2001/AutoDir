@@ -16,11 +16,11 @@ narwhals==2.10.2
 numpy==2.3.4
 packaging==25.0
 pandas==2.3.3
-pillow==12.0.0
+pillow
 protobuf==6.33.0
-pyarrow==21.0.0
+pyarrow==17.0.0
 pydeck==0.9.1
-pytesseract==0.3.13
+pytesseract
 python-dateutil==2.9.0.post0
 pytz==2025.2
 referencing==0.37.0
