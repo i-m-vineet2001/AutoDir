@@ -1,4 +1,3 @@
-
 import io
 import json
 import zipfile
@@ -13,6 +12,10 @@ from streamlit_tree_select import tree_select
 from parser import normalize_tree_text, parse_tree_text, structure_to_tree_text
 from main import create_structure, rollback, structure_to_json
 
+import os
+
+IS_CLOUD = os.path.exists("/mount/src")
+
 # ══════════════════════════════════════════════════════════════════
 # Page config & theme injection
 # ══════════════════════════════════════════════════════════════════
@@ -24,7 +27,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 /* ── Global ── */
 html, body, [data-testid="stAppViewContainer"] {
@@ -97,24 +101,28 @@ html, body, [data-testid="stAppViewContainer"] {
 .app-banner h1 { margin: 0; font-size: 1.8rem; color: #bee3f8; }
 .app-banner p  { margin: 0.3rem 0 0; color: #90cdf4; font-size: 0.9rem; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 # ══════════════════════════════════════════════════════════════════
 # Session state initialisation
 # ══════════════════════════════════════════════════════════════════
 
+
 def _init():
     defaults = {
-        "raw_text":        "",
-        "edited_text":     "",
-        "parse_result":    None,
+        "raw_text": "",
+        "edited_text": "",
+        "parse_result": None,
         "creation_result": None,
-        "history":         [],    # list of {ts, structure, log}
+        "history": [],  # list of {ts, structure, log}
     }
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
+
 
 _init()
 
@@ -125,19 +133,24 @@ _init()
 
 with st.sidebar:
     st.markdown("## ⚙️ Settings")
-    dry_run_mode = st.toggle("Dry-run mode (simulate only)", value=False,
-                             help="Preview what would be created without touching your disk.")
+    dry_run_mode = st.toggle(
+        "Dry-run mode (simulate only)",
+        value=False,
+        help="Preview what would be created without touching your disk.",
+    )
     conflict_mode = st.radio(
         "On conflict",
         ["skip", "overwrite"],
-        help="What to do when a file or folder already exists."
+        help="What to do when a file or folder already exists.",
     )
     st.divider()
     st.markdown("## 📜 Session History")
     if st.session_state.history:
         for i, h in enumerate(reversed(st.session_state.history[-5:])):
-            with st.expander(f"Run {len(st.session_state.history)-i} — {h['ts']}"):
-                st.caption(f"Folders: {h['stats'].get('folders',0)}  Files: {h['stats'].get('files',0)}")
+            with st.expander(f"Run {len(st.session_state.history) - i} — {h['ts']}"):
+                st.caption(
+                    f"Folders: {h['stats'].get('folders', 0)}  Files: {h['stats'].get('files', 0)}"
+                )
     else:
         st.caption("No runs yet this session.")
     st.divider()
@@ -148,21 +161,24 @@ with st.sidebar:
 # Banner
 # ══════════════════════════════════════════════════════════════════
 
-st.markdown("""
+st.markdown(
+    """
 <div class="app-banner">
   <h1>🗂️ AutoDir v2</h1>
   <p>Paste a tree structure, drop an image, or upload a .txt — generate a real folder hierarchy in seconds.</p>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 # ══════════════════════════════════════════════════════════════════
 # Tabs
 # ══════════════════════════════════════════════════════════════════
 
-tab_input, tab_edit, tab_preview, tab_create, tab_export = st.tabs([
-    "1 · Input", "2 · Edit", "3 · Preview", "4 · Create", "5 · Export"
-])
+tab_input, tab_edit, tab_preview, tab_create, tab_export = st.tabs(
+    ["1 · Input", "2 · Edit", "3 · Preview", "4 · Create", "5 · Export"]
+)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -172,7 +188,9 @@ tab_input, tab_edit, tab_preview, tab_create, tab_export = st.tabs([
 with tab_input:
     st.subheader("Import your tree structure")
 
-    input_mode = st.radio("Source", ["Upload file", "Paste text", "Use template"], horizontal=True)
+    input_mode = st.radio(
+        "Source", ["Upload file", "Paste text", "Use template"], horizontal=True
+    )
 
     TEMPLATES = {
         "Python project": """\
@@ -191,7 +209,6 @@ my_project/
 ├── requirements.txt
 ├── setup.py
 └── README.md""",
-
         "React app": """\
 my-app/
 ├── public/
@@ -209,7 +226,6 @@ my-app/
 │   └── index.js
 ├── package.json
 └── README.md""",
-
         "FastAPI backend": """\
 backend/
 ├── app/
@@ -229,7 +245,6 @@ backend/
 ├── .env.example
 ├── requirements.txt
 └── Dockerfile""",
-
         "Data science": """\
 ds_project/
 ├── data/
@@ -257,7 +272,7 @@ ds_project/
         uploaded = st.file_uploader(
             "Drop a TXT or image file",
             type=["txt", "png", "jpg", "jpeg", "webp"],
-            help="Images are processed with Tesseract OCR."
+            help="Images are processed with Tesseract OCR.",
         )
         if uploaded:
             if uploaded.type.startswith("image/"):
@@ -265,7 +280,9 @@ ds_project/
                 st.image(img, caption="Uploaded image", use_container_width=True)
                 with st.spinner("Running OCR…"):
                     raw_text = pytesseract.image_to_string(img)
-                st.success(f"OCR complete — {len(raw_text.splitlines())} lines extracted.")
+                st.success(
+                    f"OCR complete — {len(raw_text.splitlines())} lines extracted."
+                )
             else:
                 raw_text = uploaded.read().decode("utf-8", errors="replace")
                 st.success(f"Loaded — {len(raw_text.splitlines())} lines.")
@@ -274,16 +291,18 @@ ds_project/
         raw_text = st.text_area(
             "Paste your tree here",
             height=300,
-            placeholder="project/\n├── src/\n│   └── main.py\n└── README.md"
+            placeholder="project/\n├── src/\n│   └── main.py\n└── README.md",
         )
 
     else:  # Template
         chosen = st.selectbox("Choose a starter template", list(TEMPLATES.keys()))
         raw_text = TEMPLATES[chosen]
-        st.text_area("Template preview (read-only)", raw_text, height=280, disabled=True)
+        st.text_area(
+            "Template preview (read-only)", raw_text, height=280, disabled=True
+        )
 
     if raw_text.strip():
-        st.session_state.raw_text    = raw_text
+        st.session_state.raw_text = raw_text
         st.session_state.edited_text = raw_text
         st.info("Input ready. Head to **2 · Edit** to review before parsing.")
 
@@ -294,7 +313,9 @@ ds_project/
 
 with tab_edit:
     st.subheader("Edit tree structure")
-    st.caption("Folders end with `/`. Indent each level with 4 spaces (or use tree symbols).")
+    st.caption(
+        "Folders end with `/`. Indent each level with 4 spaces (or use tree symbols)."
+    )
 
     col_edit, col_help = st.columns([3, 1])
 
@@ -304,7 +325,7 @@ with tab_edit:
             value=st.session_state.edited_text,
             height=360,
             key="tree_editor",
-            placeholder="project/\n├── src/\n│   └── main.py\n└── README.md"
+            placeholder="project/\n├── src/\n│   └── main.py\n└── README.md",
         )
         st.session_state.edited_text = edited
 
@@ -321,10 +342,14 @@ with tab_edit:
 
     col_b1, col_b2 = st.columns([2, 1])
     with col_b1:
-        parse_clicked = st.button("🔍 Parse & validate", type="primary", use_container_width=True)
+        parse_clicked = st.button(
+            "🔍 Parse & validate", type="primary", use_container_width=True
+        )
     with col_b2:
         if st.button("🧹 Normalize whitespace", use_container_width=True):
-            st.session_state.edited_text = normalize_tree_text(st.session_state.edited_text)
+            st.session_state.edited_text = normalize_tree_text(
+                st.session_state.edited_text
+            )
             st.rerun()
 
     if parse_clicked:
@@ -366,9 +391,9 @@ with tab_preview:
         c1, c2, c3, c4 = st.columns(4)
         for col, val, lbl in [
             (c1, s["folders"], "Folders"),
-            (c2, s["files"],   "Files"),
-            (c3, s["total"],   "Total items"),
-            (c4, s["depth"],   "Max depth"),
+            (c2, s["files"], "Files"),
+            (c3, s["total"], "Total items"),
+            (c4, s["depth"], "Max depth"),
         ]:
             col.markdown(
                 f'<div class="metric-card"><div class="metric-val">{val}</div>'
@@ -388,11 +413,13 @@ with tab_preview:
                 for idx, (k, v) in enumerate(d.items()):
                     nid = f"{prefix}/{k}/{idx}"
                     if isinstance(v, dict):
-                        nodes.append({
-                            "label": f"📁 {k}",
-                            "value": nid,
-                            "children": _to_nodes(v, nid),
-                        })
+                        nodes.append(
+                            {
+                                "label": f"📁 {k}",
+                                "value": nid,
+                                "children": _to_nodes(v, nid),
+                            }
+                        )
                     else:
                         nodes.append({"label": f"📄 {k}", "value": nid})
                 return nodes
@@ -423,7 +450,71 @@ with tab_create:
 
     if result is None or not result.ok:
         st.info("Parse your tree in **2 · Edit** first.")
+
+    elif IS_CLOUD:
+        # ── Cloud mode: can't write to user's machine, offer ZIP instead ──
+        st.subheader("Download your structure")
+        st.info(
+            "**You're on the cloud version** — files can't be created directly on your machine.\n\n"
+            "Download the ZIP skeleton below, then unzip it anywhere on your computer to scaffold the structure instantly."
+        )
+
+        s = result.stats
+        c1, c2, c3 = st.columns(3)
+        for col, val, lbl in [
+            (c1, s["folders"], "Folders"),
+            (c2, s["files"], "Files"),
+            (c3, s["total"], "Total items"),
+        ]:
+            col.markdown(
+                f'<div class="metric-card"><div class="metric-val">{val}</div>'
+                f'<div class="metric-lbl">{lbl}</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        st.divider()
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+
+            def _zip_add_create(zf, d: dict, prefix: str):
+                for name, content in d.items():
+                    path = f"{prefix}/{name}" if prefix else name
+                    if isinstance(content, dict):
+                        zf.mkdir(path) if hasattr(zf, "mkdir") else zf.writestr(
+                            path + "/.keep", ""
+                        )
+                        _zip_add_create(zf, content, path)
+                    else:
+                        zf.writestr(path, "")
+
+            _zip_add_create(zf, result.structure, "")
+        buf.seek(0)
+
+        st.download_button(
+            "⬇️ Download ZIP skeleton",
+            data=buf,
+            file_name="directory_skeleton.zip",
+            mime="application/zip",
+            use_container_width=True,
+            type="primary",
+        )
+        st.caption(
+            "Unzip anywhere on your machine — all folders and empty files are ready to go."
+        )
+
+        st.divider()
+        st.markdown("**Want full local file creation?**")
+        st.code(
+            "git clone https://github.com/i-m-vineet2001/autodir.git\ncd autodir\npip install -r requirements.txt\nstreamlit run AutoDir/app.py",
+            language="bash",
+        )
+        st.caption(
+            "Run locally to create folders directly on your machine with dry-run, rollback, and conflict handling."
+        )
+
     else:
+        # ── Local mode: full disk creation ──
         st.subheader("Create on disk")
 
         if dry_run_mode:
@@ -432,7 +523,7 @@ with tab_create:
         base_path_str = st.text_input(
             "Base directory",
             value=str(Path.cwd()),
-            help="The structure will be created inside this directory."
+            help="The structure will be created inside this directory.",
         )
 
         col_go, col_rb = st.columns([2, 1])
@@ -453,11 +544,13 @@ with tab_create:
         if go:
             base = Path(base_path_str)
             if not dry_run_mode and not base.exists():
-                st.error("That directory does not exist. Create it first, or enable dry-run.")
+                st.error(
+                    "That directory does not exist. Create it first, or enable dry-run."
+                )
             else:
                 with st.spinner("Working…"):
-                    root_name  = next(iter(result.structure))
-                    root_body  = result.structure[root_name]
+                    root_name = next(iter(result.structure))
+                    root_body = result.structure[root_name]
                     cr = create_structure(
                         base / root_name,
                         root_body,
@@ -466,16 +559,19 @@ with tab_create:
                     )
                 st.session_state.creation_result = cr
 
-                # Record history
-                st.session_state.history.append({
-                    "ts":      datetime.datetime.now().strftime("%H:%M:%S"),
-                    "stats":   result.stats,
-                    "log":     [e.label() for e in cr.log],
-                })
+                st.session_state.history.append(
+                    {
+                        "ts": datetime.datetime.now().strftime("%H:%M:%S"),
+                        "stats": result.stats,
+                        "log": [e.label() for e in cr.log],
+                    }
+                )
 
                 counts = cr.counts
                 if dry_run_mode:
-                    st.info(f"Dry-run complete — {counts.get('dry-run', 0)} items simulated.")
+                    st.info(
+                        f"Dry-run complete — {counts.get('dry-run', 0)} items simulated."
+                    )
                 elif cr.success:
                     st.balloons()
                     st.success(
@@ -490,14 +586,19 @@ with tab_create:
             st.session_state.creation_result = None
             st.success(f"Rolled back {len(deleted)} item(s).")
 
-        # Creation log
         cr = st.session_state.creation_result
         if cr:
             st.divider()
             st.markdown(f"**Creation log** — {len(cr.log)} entries")
-            css_map = {"created": "log-created", "skipped": "log-skipped",
-                       "error": "log-error", "dry-run": "log-dryrun"}
-            log_html = "<div style='font-family:monospace;font-size:0.78rem;line-height:1.8'>"
+            css_map = {
+                "created": "log-created",
+                "skipped": "log-skipped",
+                "error": "log-error",
+                "dry-run": "log-dryrun",
+            }
+            log_html = (
+                "<div style='font-family:monospace;font-size:0.78rem;line-height:1.8'>"
+            )
             for entry in cr.log:
                 css = css_map.get(entry.status, "")
                 log_html += f'<div class="{css}">{entry.label()}</div>'
@@ -553,7 +654,9 @@ with tab_export:
                     for name, content in d.items():
                         path = f"{prefix}/{name}" if prefix else name
                         if isinstance(content, dict):
-                            zf.mkdir(path) if hasattr(zf, "mkdir") else zf.writestr(path + "/.keep", "")
+                            zf.mkdir(path) if hasattr(zf, "mkdir") else zf.writestr(
+                                path + "/.keep", ""
+                            )
                             _zip_add(zf, content, path)
                         else:
                             zf.writestr(path, "")
