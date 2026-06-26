@@ -18,7 +18,7 @@ packaging==25.0
 pandas==2.3.3
 pillow
 protobuf==6.33.0
-pyarrow==17.0.0
+#pyarrow==17.0.0
 pydeck==0.9.1
 pytesseract
 python-dateutil==2.9.0.post0
