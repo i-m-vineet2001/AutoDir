@@ -1,0 +1,17 @@
+# Python
+*.py[cod]
+__pycache__/
+*.so
+
+# Virtual environments
+AutoDir/.venv/
+
+# macOS
+.DS_Store
+
+# Streamlit cache
+.cache/
+
+# IDE/editor
+.vscode/
+.idea/
