@@ -231,6 +231,6 @@ MIT — see [LICENSE](LICENSE).
 
 <div align="center">
 
-Built with ❤️ by **Vineet** · [LinkedIn](https://linkedin.com/in/your-handle) · [GitHub](https://github.com/your-username)
+Built with ❤️ by **Vineet** · [LinkedIn](https://www.linkedin.com/in/vineetpatel2001/) · [GitHub](https://github.com/i-m-vineet2001)
 
 </div>
