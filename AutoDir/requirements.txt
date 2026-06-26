@@ -29,7 +29,7 @@ rpds-py==0.28.0
 six==1.17.0
 smmap==5.0.2
 streamlit==1.51.0
-streamlit-tree-select==0.0.5
+#streamlit-tree-select==0.0.5
 tenacity==9.1.2
 toml==0.10.2
 tornado==6.5.2
